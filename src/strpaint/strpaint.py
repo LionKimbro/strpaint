@@ -2,6 +2,8 @@
 
 import copy
 
+from . import strscan
+
 
 X="X"
 Y="Y"
@@ -230,7 +232,6 @@ def paste(x,y, s):
 
 
 def use_template(template):
-    import strscan
     g[TEMPLATE] = template
     g[PARSED_TEMPLATE] = strscan.scan(template)
 
@@ -256,13 +257,5 @@ def template_write(label, text):
     popclip()
     poppos()
 
-"""
-An Example:
 
-from strpaint import *
-import strscan
-use_template(strscan.test)
-copy_template()
-template_write("baz", "this is a test")
-"""
 
