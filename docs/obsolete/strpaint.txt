@@ -1,0 +1,241 @@
+date: 2021-07-01
+
+
+== note-01: Systems Decomposition ==
+date: 2021-07-01
+
+
+  "Literal Positioning"
+  
+    g[X] g[Y]
+   '_________'
+      |
+      +__ lit_slide(dx,dy, steps=1)
+      |
+      `__ lit_slide_dir(dir, steps=1)
+
+
+  "Pattern"
+
+    PATTERN: xxxxxxxxxxxxxxxxxxxxxxxx
+                  |
+                  PI
+
+    pattern(s)           patternchar()
+    save_pattern()         - read a character
+    load_pattern()         - increment to next character,
+                             with a wrap-around
+
+
+  "Space"
+
+    +-+-+-+-+-+               inspace(x,y)
+    | | | | | |               xspace(x,y)  -- expand the space
+    +-+-+-+-+-+
+    |
+    +-+-+-+-+-+-+-+-+-+-+-+   getchar(x,y)
+    | | | | | | | | | | | |   putchar(x,y, ch)
+    +-+-+-+-+-+-+-+-+-+-+-+
+    | | | | | | | | |
+    +-+-+-+-+-+-+-+-+-+-+
+    | | | | | | | | | | |
+    +-+-+-+-+-+-+-+-+-+-+     chart()  -- render debugging visual of space
+    | | | | |                 render()  -- render space plainly
+    +-+-+-+-+
+
+    to-do?  chop() -- chop space of right-hand-side white-space
+
+
+  "Turtle"
+
+    literal positioning (X,Y), DIR
+    pattern system (PATTERN, PI)
+    space system (space)
+
+
+  OK, question:
+  - How does the Turtle step?
+
+  1. It goes a step in the DIR.
+  2. If that position puts it at its current target position,
+     then it d...
+
+
+  - What strategies could I use for positioning the turtle?
+
+  1. TARGET-CASTING
+  2. "RECT REGION" -- RECTANGLE BOUNDARY DETECTION
+    -- argument in favor: if the user should change direction mid-way through
+  3. "BOUNDARY AXIS" -- BOUNDARY AXIS AND POSITION
+  4. MULTIPLE!  -- support both RECT REGION & BOUNDARY AXIS approach;
+     use a variable "STEPFN"
+
+  - What strategies for the cross-direction?
+
+  20. Two Layer OK Explicit Redundant OK Different OK
+  21. Two Layer Sharing Concepts, General Detached Implementation
+  22. Two Layer Sharing Concepts, Replacing Globals
+
+
+  Navigating Coordinates:
+
+  LOOP
+    <------------------------------>
+                
+  COIL
+    <------------------------------.
+    `------------------------------.
+    `------------------------------.
+    `------------------------------.
+    `------------------------------.
+    `------------------------------.
+    `------------------------------.
+    `------------------------------>
+
+  You could LOOP horizontally,
+  COIL vertically, or whatever...
+
+  boundary-response:
+    RIGHT: COIL-DOWN
+    LEFT: COIL-UP
+    UP: LOOP
+    DOWN: LOOP
+
+  boundary-response:
+    RIGHT: COIL-DOWN
+    LEFT: COIL-UP
+    UP: STOP
+    DOWN: STOP
+
+
+== note-200: Idea -- Reflective Characters ==
+date: 2021-07-01
+
+  Instead of storing individual characters at 2-D positions,
+  consider storing "reflections."
+
+  REFLECTIONS
+
+    (p, D, k, i)  -- p: permission ("R" -- read-only
+                                    "W" -- read/write
+                                    "w" -- read/write(ext))
+                                      (write(ext):
+                                       write(ext) means you can only write
+                                       within the extents on the string;
+                                       it cannot be expanded past it's
+                                       present length)
+                  -- D: dictionary
+                  -- k: key into the dictionary
+                  -- i: index into string within D[k]
+
+    (p, LLch, x, y)  -- p: permission (R/W/w)
+                     -- LLch: list (primary) of lists (secondary)
+                              of individual characters ("ch")
+                     -- x: index into secondary list
+                     -- y: index into primary list
+
+  The idea is that when you read the value, it comes from the source.
+    D[k][i]
+    LLch[y][x]
+
+  ...and if you WRITE a value at the position, it gets written TO the source,
+     if permissions allow, otherwise, raise an error flag and either just
+     ignore, or halt a process, depending on configuration.
+
+
+
+== note-201: Idea -- Turtle micro-Commands ==
+date: 2021-07-01
+
+  Commands:
+
+  literal turn:
+    dir^  turn to up
+    dir<  turn to left
+    dir>  turn to right
+    dirv  turn to down
+
+  literal movement:
+    00     move to (0,0)
+    lit<   go left one
+    lit>   go right one
+    lit^   go up one
+    litv   go down one
+    lit<<  go to far left side (BX0)
+    lit>>  go to far right side (BX1)
+    lit^^  go to far top side (BY0)
+    litvv  go to far bottom side (BY1)
+
+  position recall:
+    pushpos  push (x,y) onto stack
+    poppos   pop (x,y) from stack
+
+  relative movement:
+    >   go forward one, in DIR
+    <   go backward one, in DIR
+    rt  right turn
+    lt  left turn
+
+  writing:
+    !  write character from pattern, AND THEN advance x1 (p>), wrapping around at end
+    p<<  rewind pattern to position 0
+    p>  advance (skip) pattern 1 position
+    p<  rewind pattern 1 position
+
+    note: the pattern & pattern index is kept in global memory
+
+  reading:
+    ?   append character to read buffer
+    r0  clear read buffer
+
+  numbers:
+    [1-9][0-9]+  put number onto the stack
+    +  add
+    -  subtract
+    *  multiply
+    div  push remainder part, THEN push whole part (whole part on top of stack)
+
+  general stack manipulation:
+    swap
+    dup
+    drop
+
+
+
+== note-202: Related Work ==
+date: 2021-07-02
+
+Method:
+* was nearly impossible to find with pypi -- "string 2d" returns 500 pages of nonsense
+* google search much better: site:pypi.org "string" "2d"
+
+Found:
+* PyTextCanvas -- https://pypi.org/project/PyTextCanvas/
+                  https://github.com/asweigart/pytextcanvas
+  by AlSweigart -- amazing guy with great work
+  
+  -- very good, very close
+  -- I could just create a wrapper around this, for my particular interest
+
+  Features:
+  - turtle
+  - colorama colors
+  - locate
+  - rectangular text canvas
+  - rectangle drawing
+  - flips
+  - rotation (not implemented)
+  - fills, floodfills
+  - replacements
+  - copy
+  - paste
+  - uses pybresenham for ddrawing thigns
+    - circle
+    - diamond
+    - polygons
+    - grids
+
+
+  OK, that's pretty complete.
+
+

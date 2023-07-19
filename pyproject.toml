@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strpaint"
+version = "1.0.0"
+
+authors = [
+  { name="Lion Kimbro", email="lionkimbro+program@gmail.com" },
+]
+
+description = "2-dimensional string painter"
+
+readme = "README.md"
+
+requires-python = ">=3.6"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "pyperclip",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/LionKimbro/strpaint"
+"Bug Tracker" = "https://github.com/LionKimbro/strpaint/issues"
+

@@ -1,0 +1,277 @@
+title: Wishlist
+date: 2023-07-18
+
+
+== Ideas for Further Development ==
+date: 2023-07-18
+
+  Want a peek into what I'm thinking about doing with strpaint, going
+  forward?
+
+  "Thinking out loud" is part of my process.  If you don't want to see
+  what I'm thinking about, just stop right now.  But if you're
+  interested, read on.
+
+
+1. find(substr, flags="...")
+
+  The idea is that the cursor will position itself around where the
+  given substring is located.  (The flags will determine the precise
+  location.)
+
+  Why's that so cool?  Because if you have a complex visual display,
+  say something like:
+
+----------------------------------------------------------------------
+    1 2 3 4 5 6 7 8 9 10
+ 1  . . . . . . . . . .  Stardate      3500.0
+ 2  . . . . . . . . . .  Condition     GREEN
+ 3  . . . . . . . . . .  Position      8 - 1, 7 - 5
+ 4  . . . . . . . . . .  Life Support  ACTIVE
+ 5  . . . . . . . . . .  Warp Factor   5.0
+ 6  . . * . . . . . . .  Energy        5000.00
+ 7  . . . . E . . . . .  Torpedoes     10
+ 8  . * . . . . * . . .  Shields       DOWN, 100% 2500.0 units
+ 9  . . .   . . . . . .  Klingons Left 3
+10  . . . . . . . . . .  Time Left     7.00
+----------------------------------------------------------------------
+
+  ...then you can break it down into:
+
+----------------------------------------------------------------------
+display = """
+    1 2 3 4 5 6 7 8 9 10
+ 1  . . . . . . . . . .  Stardate
+ 2  . . . . . . . . . .  Condition
+ 3  . . . . . . . . . .  Position
+ 4  . . . . . . . . . .  Life Support
+ 5  . . . . . . . . . .  Warp Factor
+ 6  . . . . . . . . . .  Energy
+ 7  . . . . . . . . . .  Torpedoes
+ 8  . . . . . . . . . .  Shields
+ 9  . . . . . . . . . .  Klingons Left
+10  . . . . . . . . . .  Time Left
+"""
+
+positions = """
+    . . . . . . . . . ..
+ .  TL. . . . . . . . .  ........      STARDATE
+ .  . . . . . . . . . .  .........     CONDITION
+ .  . . . . . . . . . .  ........      POSITION . .
+ .  . . . . . . . . . .  ............  LIFESUPPORT
+ .  . . . . . . . . . .  ...........   WARPFACTOR
+ .  . . . . . . . . . .  ......        ENERGY.
+ .  . . . . . . . . . .  .........     TORPEDOES
+ .  . . . . . . . . . .  .......       SHIELDS................
+ .  . . . . . . . . . .  ............. KLINGONS
+..  . . . . . . . . . BR .........     TIMELEFT
+"""
+----------------------------------------------------------------------
+
+  That is, by copying the string, "muting" it, and then annotating
+  positions on the copy, you could then use the find command to get to
+  the coordinates you need:
+
+----------------------------------------------------------------------
+g = {"SAVED": ""}
+
+def start():
+    g["SAVED"] = None
+    strpaint.reset()
+    strpaint.write(display)  # start with just "display"
+
+def switch_to_positions():
+    g["SAVED"] = strpaint.as_str()
+    strpaint.reset()
+    strpaint.write(positions)
+
+def return_to_display():
+    "Return to the display, preserving location."
+    saved_pos = strpaint.loc()
+    strpaint.reset()
+    strpaint.write(g["SAVED"])
+    strpaint.loc(*saved_pos)
+
+def update_text(key, value):
+    switch_to_positions()
+    # strpaint.find: This is where the location is found.
+    # flag "0": start searching from (0,0)
+    # flag "a": end with the cursor at the beginning of the found string
+    strpaint.find(key, flags="0a")
+    return_to_display()
+    # flag "e": end with the cursor at the end of what was just written
+    strpaint.write(value, flags="e")
+    # this function doesn't exist yet -- it'll terminate the line at
+    # the location that the location cursor is at
+    strpaint.truncate()
+
+def render():
+    start()
+    update_text("STARDATE", "3500.0")
+    update_text("CONDITION", "GREEN")
+    update_text("POSITION", "8 - 1, 7 - 5")
+    update_text("LIFESUPPORT": "ACTIVE")
+    update_text("WARPFACTOR", "5.0")
+    update_text("ENERGY", "5000.00")
+    update_text("TORPEDOES", "10")
+    update_text("SHIELDS", "DOWN, 100% 2500.0 units")
+    update_text("KLINGONS", "3")
+    update_text("TIMELEFT", "7.00")
+----------------------------------------------------------------------
+
+  To do the grid, add this positioning function:
+
+----------------------------------------------------------------------
+def grid_position(rownum, colnum):
+    switch_to_positions()
+    strpaint.find("TL", flags="0a")
+    (x,y) = strpaint.loc()
+    x += 2*(colnum-1)  # two spaces right, for each colnum over 1)
+    y += 1*(rownum-1)  # one space down, for each rownum over 1)
+    return_to_display()
+    strpaint.loc(x,y)
+----------------------------------------------------------------------
+
+  Now, you can do something like:
+----------------------------------------------------------------------
+    grid_position(enterprise_y, enterprise_x)
+    strpaint.write("E")
+
+    for base_x, base_y in ((3,6), (2,8), 7,8)):
+        grid_position(base_y, base_x)
+        strpaint.write("*")
+----------------------------------------------------------------------
+
+  What's ugly here?
+
+  The functions switch_to_display, return_to_display.
+
+  So that leads me to the second thing I want to write:
+
+
+2. slate(name)
+
+  The idea here is to store "named slates."
+
+  Each state starts blank.  "A clean slate," so to speak.
+
+  When switching between slates (by calling: slate(name)),
+  the cursor position remains the same.
+
+  (I will likely add flags, for forcing a clearing,
+   and for forcing a repositioning of the location cursor.)
+
+  The default behavior will be:
+  * if it's a new slate, allocate the slate
+  * if it's a pre-existing slate, do NOT clear it
+  * preserve the location cursor position pre-/post- slate change
+
+  With this behavior, the code for "switching" above would become:
+  
+----------------------------------------------------------------------
+def switch_to_positions():
+    strpaint.slate("positions")
+    strpaint.loc(0,0)
+
+def return_to_display():
+    strpaint.slate("display")
+----------------------------------------------------------------------
+
+  This makes much more sense.
+
+
+3. Change Tracking
+
+  Another idea I have is to implement "change tracking."
+  
+  Since each "poke" is an individual operation, then if you wanted to
+  notice "what changed?", by keeping track of the "poke" operations, and
+  how they differ from what was originally there, the system could help
+  minimize writes to a display.
+
+  Why would you want to do this?
+
+  I can imagine writing a game, and using an off-screen invisible string
+  to represent the display.  Going back to the "trek" example (from above,)
+  you could render the grid portion of:
+
+----------------------------------------------------------------------
+    1 2 3 4 5 6 7 8 9 10
+ 1  . . . . . . . . . .  Stardate      3500.0
+ 2  . . . . . . . . . .  Condition     GREEN
+ 3  . . . . . . . . . .  Position      8 - 1, 7 - 5
+ 4  . . . . . . . . . .  Life Support  ACTIVE
+ 5  . . . . . . . . . .  Warp Factor   5.0
+ 6  . . * . . . . . . .  Energy        5000.00
+ 7  . . . . E . . . . .  Torpedoes     10
+ 8  . * . . . . * . . .  Shields       DOWN, 100% 2500.0 units
+ 9  . . .   . . . . . .  Klingons Left 3
+10  . . . . . . . . . .  Time Left     7.00
+----------------------------------------------------------------------
+
+  ...in a simplified form:
+
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..*.......\n"
+    "....E.....\n"
+    ".*....*...\n"
+    "..........\n"
+    "..........\n"
+
+  Of course, it'd start out totally blank:
+
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+    "..........\n"
+
+  Then, you can write to it, through a series of processes.
+
+  It would store the locations that have been poked to, that produced a change:
+
+    (2,8), (3,6), (5,7), (7,8)
+
+  It'd use a set in the back end, so if you wrote to a single location
+  multiple times, it would keep the single point in there.
+
+  Finally, the user could ask, "What's changed?", and then check and
+  update only those points.
+
+----------------------------------------------------------------------
+strpaint.track_changes()
+
+# ...do a bunch of things to the grid...
+
+for (x,y,ch) in strpaint.get_changes():
+    # update a graphical display with the grid
+----------------------------------------------------------------------
+
+
+4. Integration with an imperative rectangle/positioning library.
+
+  I have written a couple of libraries in the past for imperatively
+  working with X and Y coordinates;
+
+  If I link the location and the clipping region to that library, ...
+
+
+5. Turtle
+
+  With a turtle, you can draw in straightforward, intuitive way.
+
+  The clipping region becomes a turtle fence.
+
+  Pen down, pen up, pen character select, forward, back, right, left,
+  north, east, south, west, queue_characters (lay down characters in the
+  direction of travel, as you travel,) -- this kind of thing.
+

@@ -1,0 +1,5 @@
+["INSTALL1", "copy strpaint.py %DROPLOC%\\python\\strpaint.py",
+ "INSTALL2", "copy strscan.py %DROPLOC%\\python\\strscan.py",
+ "", "",
+ "", ""]
+

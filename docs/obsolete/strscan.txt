@@ -1,0 +1,169 @@
+title: Scanning a Template
+date: 2021-07-02
+
+
+== note-202: Pseudo-Code: Scanning a Template ==
+date: 2021-07-01
+tags: obsolete
+importnote: imported from strpaint.txt 2021-07-02
+
+  MOST OF THIS WAS OVERARCHITECTURING --
+  WANDERING THROUGH THE PROBLEM SPACE OUT LOUD AND IN CODE.
+  Pretty expensive!!
+
+  A lesson:
+  - when you're tempted to use a stack, ask yourself, "is there a
+    MAXIMAL DEPTH here?"  if not, see if you can't just use fixed
+    registers, before adding a stack
+
+----------------------------------------------------------------------
+
+  Scan, ...
+  When you find a "." or a "_" at the start of a line or after a newline,
+  (SHADES OF: STARTWORD flag auto-detection,) then "can-be-template"
+  turns on.
+
+  The positions of words are indexed.  Repeat occurences are also indexed.
+  For example:
+  {LITPOS:
+    {"FOO": [(3,4)],
+     "BAR": [(6,6), (6,7), (6,8)]},
+   NAMEDREG:
+    {"1": [(4,10,30,13)],
+     ...]},
+   ALLREG:
+    [(4,10,30,13, "1"), ...]   <- anonymous regions included; just have None for name
+  }
+
+
+0,0    -- starting at the beginning
+
+.
+|@_?     state:_0
+|@.?     state:.0
+|@WS?    state:WS
+|else:   state:WORD
+
+  state:_0
+  --------
+    mark
+    ROK?  NO-> endofline()
+    >
+    state:0-read0
+
+  state:0-read0
+    .
+    |@_?  YES-> > cont
+    |@N?  state:0-readname
+    |else: keep_anonymous()
+    
+
+
+commands:
+0,0  -- x=0, y=0
+>    -- go right a character
+cont  -- re-enter from beginning in current state
+state:...  -- shift state to ...
+
+function operations:
+endofline() -- ...
+keep_anonymous() -- pop mark; from that pos to present position,
+                    keep the position as an anonymous region
+                     
+
+evaluations:
+@_?   -- at an underscore?
+@.?   -- at a period?
+@N?   -- at a valid name char?
+@WS?  -- at a whitespace char?
+ROK?  -- right okay?
+
+
+
+  Hmm...
+
+  This machine seems more complex than it needs to be.
+
+
+  Let's try again.
+
+  maintain: X, Y position of cursor
+  ?  -- read at pos
+  >  -- go right one (halt at newline or EOF;
+                      flag: NEWLINE or EOF in respective conditions)
+  crlf -- clear EOLN (reactivate), 
+  goto:X,Y  -- goto a position
+  <<  -- go back to start
+  v  -- go to the next line (halt and flag at bottom)
+  
+  .>  -- read to the right, eating all the .'s, and reading out
+         a single word,
+
+
+
+  Layers:
+    PRIMITIVE --
+      keeps track of I
+      takes simple instructions
+      
+    BASIC -- (basic movement & manipulation)
+      keeps track of I, X, Y position
+      navigates across a newline-including input string; not REALLY 2-D aware
+      may or may not be able to position into impossible positions (EOF)
+
+    SCANNER -- (specific reading instructions on a line)
+      zips left to right, identifying meaningful regions,
+      and parking them for further PROCESS consideration
+
+    PROCESS -- (intelligent movement & manipulation)
+      interacts with some data structures for record keeping
+      handles exceptional states
+      used to scan out "_FOO______________" and "............." regions
+
+    CONTROL -- (overall operation)
+      builds data structures
+      initializes systems
+      gets them running
+      collects results, prepares for user
+
+
+  Control Layer data-structure:
+
+  RESULTS:
+    LITPOS:
+      "literal-string": [(x0,y,x1,y), ...]
+      ...
+    NAMEDREG:
+      ...
+    RAW:
+      ... (raw data collected)
+
+  INPROCESS COMPILATION:
+    RAW: (raw data collected)
+    PREVDOTLINE: [x0,x1,y0, label=None/"..."]
+    THISLINE: [TYPE=LBL/DOT/UNDER, x0,x1, label=None/"..."]
+      LBL: put it into the raw collection, as a literal label
+      DOT: same x0,x1 as a PREVDOTLINE entry?
+    ...?
+
+  SCANNER:
+    SCANLINE: [(x0,x1, TYPE, msg), ...]
+
+
+  Scanline code:
+  clear
+  0<--
+  while !@EOLN:  -- note: @EOLN also triggered when @EOF
+    @WS? > continue
+    else:
+      keep-x-pos
+      try-read-.
+        success: good -- record (DOTS, restored-x, x, word-read or None)
+        fail: restore pos
+      try-read-_
+        success: good -- record (UNDER, restored-x, x, word-read or None)
+        fail: restore pos
+      read-to-non-WS
+        success: guaranteed -- record (LIT, restored-x, x, word-read)
+  
+

@@ -1,0 +1,13 @@
+LICENSE
+README.txt
+pyproject.toml
+src/strpaint/__init__.py
+src/strpaint/strpaint.py
+src/strpaint/strscan.py
+src/strpaint.egg-info/PKG-INFO
+src/strpaint.egg-info/SOURCES.txt
+src/strpaint.egg-info/dependency_links.txt
+src/strpaint.egg-info/requires.txt
+src/strpaint.egg-info/top_level.txt
+test/test_basics.py
+test/test_strscan.py
